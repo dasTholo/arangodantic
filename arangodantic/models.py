@@ -3,7 +3,7 @@ from abc import ABC
 from contextlib import asynccontextmanager
 from datetime import datetime
 from functools import lru_cache
-from typing import Optional, Sequence, Type, TypeVar
+from typing import Optional, Sequence, Type, TypeVar, Any
 
 from arango import (
     CollectionDeleteError,
@@ -35,6 +35,8 @@ from arangodantic.utils import (
     build_sort,
     remove_whitespace_lines,
 )
+
+from models.base_models import DatabaseHistory
 
 TModel = TypeVar("TModel", bound="Model")
 
@@ -183,13 +185,14 @@ class Model(BaseModel, ABC):
 
     async def upsert(self, **kwargs):
         """
-        FIXME
-         Wie kann ich hier die history updaten?
-         ich will nicht mehrer calls machen
         UPSERT { "_key": @_key }
-        INSERT { "_key": @_key , store: @store, history:[] }
-        UPDATE { history:PUSH(OLD.history, [@store, DATE_NOW()])}
+        INSERT { "_key": @_key , value: @value, history:[] }
+        UPDATE { value: @value ,history:APPEND(OLD.history, [{ history_value:OLD.value, ts:DATE_NOW()}])}
         in @@collection
+
+
+        :param kwargs: {"_key, "value" }
+        :param optional kwargs : {"history": {"field": ":key", "history_value", "ts": "DATE_NOW()"}}
         """
         await self.before_save(new=False, **kwargs)
         data = self.get_arangodb_data()
@@ -200,29 +203,37 @@ class Model(BaseModel, ABC):
             # Let ArangoDB handle key generation
             del data["_key"]
 
-            # todo hier andere bindvars ohne key_
+            # todo here other bind vars, but not good fpr
             print(f"upsert data ohne key {data}")
+            raise NotImplementedError
 
         else:
-            print(f"upsert data {data}")
+            if data.get("query", None) is None:
+                query = """
+                        UPSERT { "_key": @_key }
+                        INSERT { "_key": @_key , value: @value, history:[] }
+                        UPDATE { value: @value ,history:APPEND(OLD.history, 
+                                [{ field: "_key", historical_value:OLD.value, date:DATE_NOW()}])
+                                    }
+                        in @@collection
+                            """
+            else:
+                query = data["query"]
 
             bind_vars = {
                 "_key": self.key_,
+                "value": data["value"],
                 "@collection": self.get_collection_name(),
             }
-            for k, v in data.items():
-                bind_vars["new_data"] = {}
-                bind_vars["new_data"][k] = v
-            print(f"bind_vars: {bind_vars}")
-        # try:
-        #     await asyncify(self.get_db().aql.execute)()
-        # except DocumentInsertError as e:
-        #     if e.error_code == 1210:
-        #         raise UniqueConstraintError(
-        #             f"Unique constraint violated for '{self.__class__.__name__}'"
-        #             f"\n{e.error_message}"
-        #         ) from e
-        #     raise
+        try:
+            await asyncify(self.get_db().aql.execute)(query=query, bind_vars=bind_vars)
+        except DocumentInsertError as e:
+            if e.error_code == 1210:
+                raise UniqueConstraintError(
+                    f"Unique constraint violated for '{self.__class__.__name__}'"
+                    f"\n{e.error_message}"
+                ) from e
+            raise
 
     @classmethod
     async def insert_many(cls, documents: list[TModel], **kwargs):
@@ -678,3 +689,20 @@ class EdgeModel(Model, ABC):
     #     for document in documents:
     #         manys.append(document.get_arangodb_data())
     #     return await super(EdgeModel, cls).insert_many(manys)
+
+
+class KeyValueStoreModel(DocumentModel, extra="allow"):
+    """
+    :param query is for upsert query string injects
+     default query is
+        "UPSERT { "_key": @_key }
+        INSERT { "_key": @_key , value: @value, history:[] }
+        UPDATE { value: @value ,history:APPEND(OLD.history,
+                [{ field: "_key", historical_value:OLD.value, date:DATE_NOW()}])
+                }
+        in @@collection"
+    """
+    key_: str = Field(alias="_key", default=None)
+    value: Any
+    history: list[DatabaseHistory] = []
+    query: str | None = None
