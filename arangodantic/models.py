@@ -692,7 +692,7 @@ class DatabaseHistory(BaseModel):
     """
     This model is used to store the history of a citizen
     """
-    date: datetime = Field(default=datetime.now(datetime.UTC).timestamp())
+    date: datetime = Field(default=datetime.now().timestamp())
     field: str
     historical_value: Any
 
