@@ -36,8 +36,6 @@ from arangodantic.utils import (
     remove_whitespace_lines,
 )
 
-from models.base_models import DatabaseHistory
-
 TModel = TypeVar("TModel", bound="Model")
 
 
@@ -690,7 +688,22 @@ class EdgeModel(Model, ABC):
     #         manys.append(document.get_arangodb_data())
     #     return await super(EdgeModel, cls).insert_many(manys)
 
+class DatabaseHistory(BaseModel):
+    """
+    This model is used to store the history of a citizen
+    """
+    date: datetime = Field(default=datetime.now(datetime.UTC).timestamp())
+    field: str
+    historical_value: Any
 
+    @field_serializer('date')
+    def serialize_date(self, dt: datetime, _info):
+        if dt is None:
+            return
+        if not isinstance(dt, float):
+            return int(dt.timestamp() * 1000)
+        return int(dt * 1000)
+        
 class KeyValueStoreModel(DocumentModel, extra="allow"):
     """
     :param query is for upsert query string injects
