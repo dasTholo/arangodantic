@@ -16,7 +16,7 @@ python-arango = "^7.9.1"
 inflection = "^0.5.1"
 orjson = "^3.9"
 shylock = "^1.2.1"
-asyncer = "^0"
+asyncer = "^0.0"
 
 
 [tool.poetry.group.dev.dependencies]
