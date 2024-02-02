@@ -616,16 +616,6 @@ class EdgeModel(Model, ABC):
     from_: str | DocumentModel = Field(alias="_from")
     to_: str | DocumentModel = Field(alias="_to")
 
-    # @field_serializer("key_")
-    # def serialize_key(self, key, _info):
-    #     print(f"info {_info}")
-    #     if key is None:
-    #         return
-    #     elif isinstance(key, uuid.UUID):
-    #         return str(uuid)
-    #     else:
-    #         return key
-
     @property
     def from_key_(self) -> str | None:
         if self.from_ is None:
@@ -658,7 +648,7 @@ class EdgeModel(Model, ABC):
         if self.rev_ != "":
             data["_id"] = self.id_
         else:
-            data["_id"] = None
+            data.pop("_id", None)
 
         if isinstance(self.from_, DocumentModel):
             data["_from"] = self.from_.id_
@@ -681,12 +671,6 @@ class EdgeModel(Model, ABC):
             edge=True, user_keys=False, *args, **kwargs
         )
 
-    # @classmethod
-    # async def insert_many(cls, documents: list):
-    #     manys = []
-    #     for document in documents:
-    #         manys.append(document.get_arangodb_data())
-    #     return await super(EdgeModel, cls).insert_many(manys)
 
 class DatabaseHistory(BaseModel):
     """
