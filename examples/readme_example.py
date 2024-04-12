@@ -11,7 +11,9 @@ from shylock import AsyncLock as Lock
 from shylock import configure as configure_shylock
 
 from arangodantic import ASCENDING, DocumentModel, EdgeModel, configure
-from arangodantic.backends.asyncer_python_arango_backend import ShylockAsyncerArangoDBBackend
+from arangodantic.backends.asyncer_python_arango_backend import (
+    ShylockAsyncerArangoDBBackend,
+)
 
 
 # Define models
