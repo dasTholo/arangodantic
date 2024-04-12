@@ -164,7 +164,7 @@ async def test_find(identity_collection):
     # with pytest.raises(CursorCountError):
     #     len(cursor)
 
-    async with (await Identity.find({"name": "James Doe"}, count=True)) as cursor:
+    async with await Identity.find({"name": "James Doe"}, count=True) as cursor:
         assert len(cursor) == 2
 
 
