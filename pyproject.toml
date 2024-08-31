@@ -1,17 +1,17 @@
 [project]
 name = "arangodantic"
-version = "0.4.1"
+version = "0.4.2"
 description = "Database models for ArangoDB using Pydantic V2 base models."
 authors = [
     {name="Digital Living International Ltd"},
     { name = "dasTholo", email = "kaitholo@gmail.com" }
 ]
 dependencies = [
-    "python-arango>=7.9.1",
-    "pydantic>=2.7.0",
-    "orjson>=3.10.0",
+    "python-arango>=8.1.0",
+    "pydantic>=2.8.2",
+    "orjson>=3.10.7",
     "shylock>=1.2.1",
-    "asyncer>=0.0.5",
+    "asyncer>=0.0.8",
     "inflection>=0.5.1",
 ]
 readme = "README.md"
