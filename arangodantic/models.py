@@ -703,3 +703,7 @@ class KeyValueStoreModel(DocumentModel, extra="allow"):
     value: Any
     history: list[DatabaseHistory] = []
     query: str | None = None
+
+    @classmethod
+    async def save(cls, **kwargs):
+        await cls.upsert(**kwargs)
