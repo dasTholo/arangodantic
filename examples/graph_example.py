@@ -16,10 +16,10 @@ from arangodantic import (
     ModelNotFoundError,
     configure,
 )
-from arangodantic.backends.asyncer_python_arango_backend import (
-    ShylockAsyncerArangoDBBackend,
-)
-
+# from arangodantic.backends.asyncer_python_arango_backend import (
+#     ShylockAsyncerArangoDBBackend,
+# )
+from arangodantic.backends import ShylockAsyncerArangoDBBackend
 
 # Define models
 class Person(DocumentModel):
