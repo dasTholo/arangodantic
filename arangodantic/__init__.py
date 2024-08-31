@@ -9,5 +9,6 @@ from arangodantic.models import (
     DocumentModel,
     EdgeModel,
     Model,
+    KeyValueStoreModel
 )
 from arangodantic.utils import SortTypes
