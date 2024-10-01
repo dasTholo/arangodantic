@@ -12,7 +12,7 @@
 -e file:.
 annotated-types==0.7.0
     # via pydantic
-anyio==4.4.0
+anyio==4.6.0
     # via asyncer
 asyncer==0.0.8
     # via arangodantic
@@ -20,10 +20,10 @@ certifi==2024.8.30
     # via requests
 charset-normalizer==3.3.2
     # via requests
-idna==3.8
+idna==3.10
     # via anyio
     # via requests
-importlib-metadata==8.4.0
+importlib-metadata==8.5.0
     # via python-arango
 inflection==0.5.1
     # via arangodantic
@@ -31,20 +31,20 @@ orjson==3.10.7
     # via arangodantic
 packaging==24.1
     # via python-arango
-pydantic==2.8.2
+pydantic==2.9.2
     # via arangodantic
-pydantic-core==2.20.1
+pydantic-core==2.23.4
     # via pydantic
 pyjwt==2.9.0
     # via python-arango
-python-arango==8.1.0
+python-arango==8.1.1
     # via arangodantic
 requests==2.32.3
     # via python-arango
     # via requests-toolbelt
 requests-toolbelt==1.0.0
     # via python-arango
-setuptools==74.0.0
+setuptools==75.1.0
     # via python-arango
 shylock==1.2.1
     # via arangodantic
@@ -53,8 +53,8 @@ sniffio==1.3.1
 typing-extensions==4.12.2
     # via pydantic
     # via pydantic-core
-urllib3==2.2.2
+urllib3==2.2.3
     # via python-arango
     # via requests
-zipp==3.20.1
+zipp==3.20.2
     # via importlib-metadata

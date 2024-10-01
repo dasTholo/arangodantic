@@ -3,7 +3,7 @@ name = "arangodantic"
 version = "0.4.2"
 description = "Database models for ArangoDB using Pydantic V2 base models."
 authors = [
-    {name="Digital Living International Ltd"},
+    { name = "Digital Living International Ltd" },
     { name = "dasTholo", email = "kaitholo@gmail.com" }
 ]
 dependencies = [

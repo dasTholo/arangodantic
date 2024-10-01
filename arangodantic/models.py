@@ -202,7 +202,7 @@ class Model(BaseModel, ABC):
             del data["_key"]
 
             # todo here other bind vars, but not good fpr
-            print(f"upsert data ohne key {data}")
+            #print(f"upsert data ohne key {data}")
             raise NotImplementedError
 
         else:
@@ -240,10 +240,10 @@ class Model(BaseModel, ABC):
         # todo add Expect Handling
         len_sequence = len(documents)
         sequence = []
-        print(f"kwargs: {kwargs}")
+
         for doc in documents:
             sequence.append(doc.get_arangodb_data())
-        print(f"sequence: {sequence}")
+
         try:
             response = await asyncify(cls.get_collection().insert_many)(
                 documents=sequence, **kwargs
@@ -262,7 +262,7 @@ class Model(BaseModel, ABC):
                 f"\nlen documents was:{len_sequence}"
                 f"\nlen response was:{len(response)}"
             )
-        print(f"many insert response: {response}")
+        return f"many insert response: {response}"
 
     @classmethod
     async def update_many(cls, documents: list[TModel], **kwargs):
@@ -282,7 +282,7 @@ class Model(BaseModel, ABC):
                     f"\n{e.error_message}"
                 ) from e
             raise
-        print(f"many update response: {response}")
+        return f"many update response: {response}"
 
     @classmethod
     async def get_many(cls, documents: Sequence[str | Json]):
@@ -503,6 +503,29 @@ class Model(BaseModel, ABC):
             raise ModelNotFoundError(f"No '{cls.__name__}' matched given filters")
 
     @classmethod
+    async def execute_aql_query(
+            cls, query: str, bind_vars: dict
+    ) -> ArangodanticCursor:
+        """
+        query like:
+            "FOR doc IN @@collection
+              Filter @value in doc.@field
+              RETURN doc"
+        bind_vars:
+            {"value: "John Doe"}
+
+        Collection is Hardset
+
+        """
+        query_string = remove_whitespace_lines(query)
+        bind_vars["@collection"] = cls.get_collection_name()
+        cursor = await asyncify(cls.get_db().aql.execute)(
+            query_string,
+            bind_vars=bind_vars
+        )
+        return ArangodanticCursor(cls, cursor)
+
+    @classmethod
     async def all(
         cls, limit: int | None = None, skip: int | None = None
     ) -> list[ArangodanticCursor]:
@@ -703,3 +726,7 @@ class KeyValueStoreModel(DocumentModel, extra="allow"):
     value: Any
     history: list[DatabaseHistory] = []
     query: str | None = None
+
+    @classmethod
+    async def save(cls, **kwargs):
+        await cls.upsert(**kwargs)
