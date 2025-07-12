@@ -17,12 +17,6 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   - orjson
   - python-arango
 
-## [0.4.3] - 2024-10-01
-- upgrade dependencies
-  - pydantic
-  - orjson
-  - python-arango
-
 ## [0.4.2] - 2024-10-01
 - upgrade dependencies
 - add aql execute in Models
