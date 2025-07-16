@@ -1,9 +1,8 @@
 from asyncio import sleep
 
-from arango import ArangoServerError
-from arango.collection import StandardCollection
-from arango.database import StandardDatabase
-from asyncer import asyncify
+from arangoasync import ArangoServerError
+from arangoasync.collection import StandardCollection
+from arangoasync.database import StandardDatabase
 from shylock import ShylockException
 from shylock.backends import ShylockAsyncBackend
 
@@ -45,7 +44,7 @@ class ShylockAsyncerArangoDBBackend(ShylockAsyncBackend):
         """
         while True:
             try:
-                await asyncify(self._db.aql.execute)(
+                await self._db.aql.execute(
                     """
                     INSERT {
                       "name": @name,
@@ -66,7 +65,7 @@ class ShylockAsyncerArangoDBBackend(ShylockAsyncBackend):
                 }:
                     if not block:
                         return False
-                    await asyncify(sleep)(POLL_DELAY)
+                    await sleep(POLL_DELAY)
                 else:
                     raise
 
@@ -75,7 +74,7 @@ class ShylockAsyncerArangoDBBackend(ShylockAsyncBackend):
         Release a given lock
         :param name: Name of the lock
         """
-        await asyncify(self._db.aql.execute)(
+        await self._db.aql.execute(
             """
             FOR l IN @@collection
                 FILTER l.name == @name
@@ -85,15 +84,15 @@ class ShylockAsyncerArangoDBBackend(ShylockAsyncBackend):
         )
 
     async def _init_collection(self):
-        if await asyncify(self._db.has_collection)(self._collection_name):
-            self._coll = await asyncify(self._db.collection)(self._collection_name)
+        if await self._db.has_collection(self._collection_name):
+            self._coll = self._db.collection(self._collection_name)
         else:
-            self._coll = await asyncify(self._db.create_collection)(
+            self._coll = await self._db.create_collection(
                 self._collection_name
             )
 
-        await asyncify(self._coll.add_persistent_index)(fields=["name"], unique=True)
-        await asyncify(self._coll.add_ttl_index)(fields=["expiresAt"], expiry_time=0)
+        await self._coll.add_index(fields=["name"], type="persistent")
+        await self._coll.add_index(fields=["expiresAt"], type="ttl", options={"expireAfter": 0})
 
     @staticmethod
     def _check():

@@ -1,8 +1,10 @@
 from shylock import ShylockAioArangoDBBackend, ShylockException
 
-from arango.database import AsyncDatabase, StandardDatabase
-from arango.collection import StandardCollection
-from arango.exceptions import ArangoServerError
+# from arango.database import AsyncDatabase, StandardDatabase
+# from arango.collection import StandardCollection
+# from arango.exceptions import ArangoServerError
+from arangoasync.database import StandardDatabase, StandardCollection
+from arangoasync.exceptions import ArangoServerError
 
 StandardDatabase = StandardDatabase
 StandardCollection = StandardCollection
@@ -16,7 +18,7 @@ class ShylockArangoDBBackend(ShylockAioArangoDBBackend):
     @staticmethod
     async def create(
             db: StandardDatabase, collection_name: str = "shylock"
-    ) -> "ShylockAioArangoDBBackend":
+    ) -> "ShylockArangoDBBackend":
         """
         Create and initialize the backend
         :param db: An instance of aioarangodb.database.StandardDatabase connected to the desired database
@@ -37,11 +39,11 @@ class ShylockArangoDBBackend(ShylockAioArangoDBBackend):
         """
         Ensure the collection is ready for our use
         """
-        from asyncer import asyncify
-        if await asyncify(self._db.has_collection)(self._collection_name):
+        if await self._db.has_collection(self._collection_name):
             self._coll = self._db.collection(self._collection_name)
         else:
-            self._coll = await asyncify(self._db.create_collection)(self._collection_name)
+            self._coll = await self._db.create_collection(self._collection_name)
 
-        await asyncify(self._coll.add_persistent_index)(fields=["name"], unique=True)
-        await asyncify(self._coll.add_ttl_index)(fields=["expiresAt"], expiry_time=0)
+        await self._coll.add_persistent_index(fields=["name"], unique=True)
+        await self._coll.add_ttl_index(fields=["expiresAt"], expiry_time=0)
+

@@ -5,19 +5,19 @@ from datetime import datetime
 from functools import lru_cache
 from typing import Optional, Sequence, Type, TypeVar, Any
 
-from arango import (
+from arangoasync import (
     CollectionDeleteError,
     CollectionTruncateError,
     DocumentDeleteError,
     DocumentInsertError,
     DocumentReplaceError,
 )
-from arango.collection import StandardCollection
-from arango.database import StandardDatabase
-from arango.errno import DATA_SOURCE_NOT_FOUND, DOCUMENT_NOT_FOUND
-from arango.typings import Json
-from asyncer import asyncify
+from arangoasync.collection import StandardCollection
+from arangoasync.database import StandardDatabase
+from arangoasync.errno import DATA_SOURCE_NOT_FOUND, DOCUMENT_NOT_FOUND
+from arangoasync.typings import Json, KeyOptions
 from pydantic import BaseModel, ConfigDict, Field, field_serializer
+
 
 from arangodantic import (
     CONF,
@@ -86,7 +86,7 @@ class Model(BaseModel, ABC):
         :return: The model.
         :raise ModelNotFoundError: Raised if no matching document is found.
         """
-        response = await asyncify(cls.get_collection().get)(document={"_key": key})
+        response = await cls.get_collection().get(document={"_key": key})
         if response is None:
             raise ModelNotFoundError(f"No '{cls.__name__}' found with _key '{key}'")
         return cls(**response)
@@ -145,10 +145,10 @@ class Model(BaseModel, ABC):
             data = self.get_arangodb_data()
             if self.key_ is None:
                 # Let ArangoDB handle key generation
-                # data.pop("key_", None)
-                del data["_id"]
+                data.pop("key_", None)
+                data.pop("_id", None)
             try:
-                response = await asyncify(self.get_collection().insert)(document=data)
+                response = await self.get_collection().insert(document=data)
             except DocumentInsertError as e:
                 if e.error_code == 1210:
                     raise UniqueConstraintError(
@@ -161,7 +161,7 @@ class Model(BaseModel, ABC):
             await self.before_save(new=False, **kwargs)
             data = self.get_arangodb_data()
             try:
-                response = await asyncify(self.get_collection().update)(document=data)
+                response = await self.get_collection().update(document=data)
             except DocumentReplaceError as e:
                 if e.error_code == 1210:
                     raise UniqueConstraintError(
@@ -224,7 +224,7 @@ class Model(BaseModel, ABC):
                 "@collection": self.get_collection_name(),
             }
         try:
-            await asyncify(self.get_db().aql.execute)(query=query, bind_vars=bind_vars)
+            await self.get_db().aql.execute(query=query, bind_vars=bind_vars)
         except DocumentInsertError as e:
             if e.error_code == 1210:
                 raise UniqueConstraintError(
@@ -245,7 +245,7 @@ class Model(BaseModel, ABC):
             sequence.append(doc.get_arangodb_data())
 
         try:
-            response = await asyncify(cls.get_collection().insert_many)(
+            response = await cls.get_collection().insert_many(
                 documents=sequence, **kwargs
             )
         except DocumentInsertError as e:
@@ -271,7 +271,7 @@ class Model(BaseModel, ABC):
         for doc in documents:
             sequence.append(doc.get_arangodb_data())
         try:
-            response = await asyncify(cls.get_collection().update_many)(
+            response = await cls.get_collection().update_many(
                 documents=sequence, **kwargs
             )
 
@@ -285,7 +285,7 @@ class Model(BaseModel, ABC):
         return f"many update response: {response}"
 
     @classmethod
-    async def get_many(cls, documents: Sequence[str | Json]):
+    async def get_many(cls, documents: Sequence[str | Json], allow_dirty_read: bool | None = None):
         """
         Return multiple documents ignoring any missing ones.
 
@@ -298,7 +298,7 @@ class Model(BaseModel, ABC):
         :rtype: [dict]
         :raise arango.exceptions.DocumentGetError: If retrieval fails.
         """
-        results = await asyncify(cls.get_collection().get_many)(documents=documents)
+        results = await cls.get_collection().get_many(documents=documents)
 
         return results
 
@@ -315,7 +315,7 @@ class Model(BaseModel, ABC):
 
         data = self.get_arangodb_data()
         try:
-            result = await asyncify(self.get_collection().delete)(
+            result = await self.get_collection().delete(
                 document=data, silent=True, ignore_missing=ignore_missing
             )
         except DocumentDeleteError as ex:
@@ -335,8 +335,8 @@ class Model(BaseModel, ABC):
         name = cls.get_collection_name()
         db = cls.get_db()
 
-        if not await asyncify(db.has_collection)(name):
-            await asyncify(db.create_collection)(name, *args, **kwargs)
+        if not await db.has_collection(name):
+            await db.create_collection(name, *args, **kwargs)
 
     @classmethod
     def get_collection(cls) -> StandardCollection:
@@ -355,8 +355,8 @@ class Model(BaseModel, ABC):
         db = cls.get_db()
 
         try:
-            return await asyncify(db.delete_collection)(
-                name, ignore_missing=ignore_missing, system=False
+            return await db.delete_collection(
+                name, ignore_missing=ignore_missing, is_system=None
             )
         except CollectionDeleteError as ex:
             if ex.error_code == DATA_SOURCE_NOT_FOUND:
@@ -377,7 +377,7 @@ class Model(BaseModel, ABC):
         **ignore_missing** is set to False.
         """
         try:
-            await asyncify(cls.get_collection().truncate)()
+            await cls.get_collection().truncate()
         except CollectionTruncateError as ex:
             if ex.error_code == DATA_SOURCE_NOT_FOUND:
                 if ignore_missing:
@@ -398,7 +398,6 @@ class Model(BaseModel, ABC):
         filters: FilterTypes = None,
         *,
         count: bool = False,
-        full_count: Optional[bool] = None,
         limit: Optional[int] = None,
         offset: Optional[int] = None,
         sort: SortTypes = None,
@@ -411,8 +410,6 @@ class Model(BaseModel, ABC):
         {"name": {"!=": "John Doe"}}.
         :param count: If set to True, the total document count is included in
         the result cursor.
-        :param full_count: The total number of documents that matched the search
-        condition if the limit would not be set.
         :param limit: Limit returned records to a maximum amount.
         :param offset: Offset used when using a limit.
         :param sort: How to sort the results. Can for example be a list of tuples with
@@ -460,11 +457,10 @@ class Model(BaseModel, ABC):
         )
         bind_vars["@collection"] = cls.get_collection_name()
 
-        cursor = await asyncify(cls.get_db().aql.execute)(
+        cursor = await cls.get_db().aql.execute(
             query,
             count=count,
             bind_vars=bind_vars,
-            full_count=full_count,
         )
         return ArangodanticCursor(cls, cursor)
 
@@ -498,7 +494,8 @@ class Model(BaseModel, ABC):
                 raise MultipleModelsFoundError(
                     f"Multiple '{cls.__name__}' matched given filters"
                 )
-            return cls(**results[0])
+            print(f"results {results}")
+            return results[0]
         except IndexError:
             raise ModelNotFoundError(f"No '{cls.__name__}' matched given filters")
 
@@ -519,14 +516,14 @@ class Model(BaseModel, ABC):
         """
         query_string = remove_whitespace_lines(query)
         bind_vars["@collection"] = cls.get_collection_name()
-        cursor = await asyncify(cls.get_db().aql.execute)(
+        cursor = await cls.get_db().aql.execute(
             query_string,
             bind_vars=bind_vars
         )
         return ArangodanticCursor(cls, cursor)
 
     @classmethod
-    async def all(
+    async def get_all(
         cls, limit: int | None = None, skip: int | None = None
     ) -> list[ArangodanticCursor]:
         """
@@ -541,11 +538,11 @@ class Model(BaseModel, ABC):
         :raise arango.exceptions.DocumentGetError: If retrieval fails.
 
         """
-        cursor = await asyncify(cls.get_collection().all)(limit=limit, skip=skip)
+        cursor = await cls.get_collection().find(limit=limit, skip=skip)
         return await ArangodanticCursor(cls, cursor).to_list()
 
     @classmethod
-    async def keys(cls) -> list[ArangodanticCursor]:
+    async def get_keys(cls) -> list[ArangodanticCursor]:
         """
         Return all document keys in the collection.
 
@@ -554,8 +551,11 @@ class Model(BaseModel, ABC):
         :raise arango.exceptions.DocumentGetError: If retrieval fails.
 
         """
-        cursor = await asyncify(cls.get_collection().keys)()
-        return await ArangodanticCursor(cls, cursor).to_list()
+        query = "FOR doc IN @@collection RETURN doc._key"
+        cursor = await cls.execute_aql_query(query, {})
+        print(f"key {await cursor.to_list()}")
+        keys = await cursor.to_list()
+        return keys
 
     @classmethod
     async def ids(cls) -> list[ArangodanticCursor]:
@@ -567,8 +567,9 @@ class Model(BaseModel, ABC):
         :raise arango.exceptions.DocumentGetError: If retrieval fails.
 
         """
-        cursor = await asyncify(cls.get_collection().ids)()
-        return await ArangodanticCursor(cls, cursor).to_list()
+        query = "FOR doc IN @@collection RETURN doc._id"
+        cursor = await cls.execute_aql_query(query, {})
+        return await cursor.to_list()
 
     @classmethod
     def get_db(cls) -> StandardDatabase:
@@ -577,6 +578,11 @@ class Model(BaseModel, ABC):
     @classmethod
     @lru_cache()
     def get_collection_name(cls) -> str:
+
+        # config_class = getattr(cls, "ArangodanticConfig", ArangodanticCollectionConfig)
+        # cls_config = config_class()
+
+
         cls_config: ArangodanticCollectionConfig = getattr(
             cls, "ArangodanticConfig", ArangodanticCollectionConfig()
         )
@@ -690,8 +696,7 @@ class EdgeModel(Model, ABC):
         """
         Ensure the Edge-collection exists and create it if needed.
         """
-        return await super(EdgeModel, cls).ensure_collection(
-            edge=True, user_keys=False, *args, **kwargs
+        return await super(EdgeModel, cls).ensure_collection(key_options=KeyOptions(allow_user_keys=False), *args, **kwargs
         )
 
 

@@ -1,6 +1,6 @@
 from typing import Callable, Optional
 
-from arango.database import StandardDatabase
+from arangoasync.database import StandardDatabase
 from inflection import pluralize, underscore
 from pydantic import BaseModel
 from shylock.backends import ShylockAsyncBackend, ShylockSyncBackend

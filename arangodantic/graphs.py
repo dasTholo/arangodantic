@@ -1,17 +1,16 @@
 from abc import ABC
 from functools import lru_cache
-from typing import Type
+from typing import Type, Any
 
-from arango import (
+from arangoasync import (
     DocumentDeleteError,
     DocumentInsertError,
     DocumentReplaceError,
     GraphDeleteError,
 )
-from arango.database import StandardDatabase
-from arango.errno import DOCUMENT_NOT_FOUND, GRAPH_NOT_FOUND, UNIQUE_CONSTRAINT_VIOLATED
-from arango.graph import Graph
-from asyncer import asyncify
+from arangoasync.database import StandardDatabase
+from arangoasync.errno import DOCUMENT_NOT_FOUND, GRAPH_NOT_FOUND, UNIQUE_CONSTRAINT_VIOLATED
+from arangoasync.graph import Graph
 from pydantic import BaseModel, Field
 
 from arangodantic import GraphNotFoundError, ModelNotFoundError, UniqueConstraintError
@@ -37,9 +36,8 @@ class GraphModel(ABC):
     @classmethod
     @lru_cache()
     def get_graph_name(cls) -> str:
-        cls_config: ArangodanticGraphConfig = getattr(
-            cls, "ArangodanticConfig", ArangodanticGraphConfig()
-        )
+        config_class = getattr(cls, "ArangodanticConfig", ArangodanticGraphConfig)
+        cls_config = config_class()
         if getattr(cls_config, "graph_name", None):
             graph = cls_config.graph_name
         else:
@@ -83,9 +81,9 @@ class GraphModel(ABC):
             try:
                 collection_name = model.get_collection_name()
                 if isinstance(model, EdgeModel):
-                    response = await asyncify(graph.insert_edge)(collection_name, data)
+                    response = await graph.insert_edge(collection_name, data)
                 else:
-                    response = await asyncify(graph.insert_vertex)(
+                    response = await graph.insert_vertex(
                         collection_name, data
                     )
             except DocumentInsertError as ex:
@@ -100,9 +98,9 @@ class GraphModel(ABC):
             data = model.get_arangodb_data()
             try:
                 if isinstance(model, EdgeModel):
-                    response = await asyncify(graph.replace_edge)(data)
+                    response = await graph.replace_edge(data)
                 else:
-                    response = await asyncify(graph.replace_vertex)(data)
+                    response = await graph.replace_vertex(data)
             except DocumentReplaceError as ex:
                 if ex.error_code == UNIQUE_CONSTRAINT_VIOLATED:
                     raise UniqueConstraintError(ex.error_message)
@@ -128,7 +126,7 @@ class GraphModel(ABC):
         """
         data = document.get_arangodb_data()
         try:
-            result: bool = await asyncify(cls.get_graph().delete_vertex)(
+            result: bool = await cls.get_graph().delete_vertex(
                 data, ignore_missing=ignore_missing
             )
         except DocumentDeleteError as ex:
@@ -155,7 +153,7 @@ class GraphModel(ABC):
         """
         data = edge.get_arangodb_data()
         try:
-            result: bool = await asyncify(cls.get_graph().delete_edge)(
+            result: bool = await cls.get_graph().delete_edge(
                 data, ignore_missing=ignore_missing
             )
         except DocumentDeleteError as ex:
@@ -192,11 +190,10 @@ class GraphModel(ABC):
         """
         Ensure the graph exists and create it if needed.
         """
-        cls_config: ArangodanticGraphConfig = getattr(
-            cls, "ArangodanticConfig", ArangodanticGraphConfig()
-        )
+        config_class = getattr(cls, "ArangodanticConfig", ArangodanticGraphConfig)
+        cls_config = config_class()
 
-        def get_edge_definitions() -> list[dict[str | list[str]]]:
+        def get_edge_definitions() -> list[dict[str, list[Any]]]:
             edge_definitions = getattr(cls_config, "edge_definitions", None)
             if not edge_definitions:
                 edge_definitions = []
@@ -223,8 +220,8 @@ class GraphModel(ABC):
         name = cls.get_graph_name()
         db = cls.get_db()
 
-        if not await asyncify(db.has_graph)(name):
-            await asyncify(db.create_graph)(
+        if not await db.has_graph(name):
+            await db.create_graph(
                 name,
                 edge_definitions=get_edge_definitions(),
                 orphan_collections=get_orphan_collections(),
@@ -246,7 +243,7 @@ class GraphModel(ABC):
         db = cls.get_db()
 
         try:
-            return await asyncify(db.delete_graph)(
+            return await db.delete_graph(
                 name, ignore_missing=ignore_missing, drop_collections=drop_collections
             )
         except GraphDeleteError as ex:

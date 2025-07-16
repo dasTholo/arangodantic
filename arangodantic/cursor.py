@@ -1,8 +1,10 @@
-from typing import List, Optional, Type
+from typing import List, Optional, Type, Any
 
-from arango import CursorCloseError
-from arango.cursor import Cursor
-from asyncer import asyncify
+from arangoasync import CursorCloseError
+from arangoasync.cursor import Cursor
+
+# from arango import CursorCloseError
+# from arango.cursor import Cursor
 
 from arangodantic.exceptions import CursorError, CursorNotFoundError
 
@@ -27,8 +29,8 @@ class ArangodanticCursor:
     def __aiter__(self):
         return self
 
-    async def __anext__(self):  # pragma: no cover
-        return await asyncify(self.next)()
+    async def __anext__(self) -> Any:
+        return await self.next()
 
     async def __aenter__(self):
         return self
@@ -58,7 +60,7 @@ class ArangodanticCursor:
         False.
         """
         try:
-            result: Optional[bool] = await asyncify(self.cursor.close)(
+            result: Optional[bool] = await self.cursor.close(
                 ignore_missing=ignore_missing
             )
         except CursorCloseError as ex:
@@ -76,17 +78,17 @@ class ArangodanticCursor:
         Convert the cursor to a list.
         """
 
-        def _get_batch(cursor_batch):
-            batch = []
-            for i in range(len(cursor_batch.batch())):
-                batch.append(cursor_batch.next())
-            return batch
-
-        return await asyncify(_get_batch)(self.cursor)
+        # def _get_batch(cursor_batch):
+        #     batch = []
+        #     for i in range(len(cursor_batch.batch())):
+        #         batch.append(cursor_batch.next())
+        #     return batch
+        #
+        # return _get_batch(self.cursor)
 
         # original code
-        # async with self as cursor:
-        #     return [i async for i in cursor]
+        async with self as cursor:
+            return [i async for i in cursor]
 
     @property
     def full_count(self) -> int:
@@ -96,7 +98,7 @@ class ArangodanticCursor:
         :return: The full count.
         :raise CursorError: If the cursor statistics do not contain the full count.
         """
-        stats = self.cursor.statistics()
+        stats = self.cursor.statistics
         try:
             full_count: int = stats["fullCount"]
         except KeyError as e:
@@ -105,3 +107,4 @@ class ArangodanticCursor:
             ) from e
 
         return full_count
+

@@ -1,63 +1,66 @@
 import random
 import string
-from os import getenv
+from decouple import config
 from typing import Optional
 from uuid import uuid4
-
+from decouple import config
 import pydantic
 import pytest
-from arango import ArangoClient
-from asyncer import asyncify
+from arangoasync import ArangoClient
+from arangoasync.auth import Auth
+
 from shylock import AsyncLock as Lock
 from shylock import configure as configure_shylock
 
 from arangodantic import DocumentModel, EdgeDefinition, EdgeModel, GraphModel, configure
-# from arangodantic.backends.asyncer_python_arango_backend import (
-#     ShylockAsyncerArangoDBBackend,
-# )
 from arangodantic.backends import ShylockAsyncerArangoDBBackend
 
-HOSTS = getenv("HOSTS")
+HOSTS = config("HOSTS")
 USERNAME = "root"
-PASSWORD = getenv("PASSWORD")
+PASSWORD = config("PASSWORD")
 DATABASE = "test"
 
 
+def rand_str(length: int) -> str:
+    """
+    Generate a random string for collection names.
+
+    :param length: The length of the random string.
+    :return: The random prefix string.
+    """
+    chars = string.ascii_letters + string.digits
+    return "".join(random.choice(chars) for _ in range(length))
+
+@pytest.fixture(scope="session")
+def prefix() -> str:
+    return f"test-{rand_str(10)}"
+
 @pytest.fixture
-async def configure_db():
-    def rand_str(length: int) -> str:
-        """
-        Generate a random string for collection names.
+async def client():
+    arango_client = ArangoClient(hosts=HOSTS)
+    try:
+        yield arango_client
+    finally:
+        await arango_client.close()
 
-        :param length: The length of the random string.
-        :return: The random prefix string.
-        """
-        chars = string.ascii_letters + string.digits
-        return "".join(random.choice(chars) for _ in range(length))
+@pytest.fixture
+async def configure_db(client, prefix):
+    auth = Auth(username=USERNAME, password=PASSWORD)
+    sys_db = await client.db("_system", auth=auth)
+    if not await sys_db.has_database(DATABASE):
+        await sys_db.create_database(DATABASE)
 
-    prefix = f"test-{rand_str(10)}"
+    test_db = await client.db(DATABASE, auth=auth)
 
-    client = ArangoClient(hosts=HOSTS)
-    # Connect to "_system" database and create the actual database if it doesn't exist
-    sys_db = await asyncify(client.db)("_system", username=USERNAME, password=PASSWORD)
-    if not await asyncify(sys_db.has_database)(DATABASE):
-        await asyncify(sys_db.create_database)(DATABASE)
 
-    db = await asyncify(client.db)(DATABASE, username=USERNAME, password=PASSWORD)
-    configure_shylock(
-        await ShylockAsyncerArangoDBBackend.create(db, f"{prefix}-shylock")
-    )
-    configure(db, prefix=f"{prefix}-", key_gen=uuid4, lock=Lock)
-
-    yield
-
-    await asyncify(db.delete_collection)(f"{prefix}-shylock")
-    await asyncify(client.close)()
+    configure(test_db, prefix=f"{prefix}-", key_gen=uuid4, lock=Lock)
+    yield test_db
 
 
 class Identity(DocumentModel):
     """Dummy identity Arangodantic model."""
-
+    class ArangodanticConfig:
+        collection_name: str = "identities"
     name: str = ""
 
 
