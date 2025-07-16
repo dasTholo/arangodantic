@@ -44,6 +44,6 @@ class ShylockArangoDBBackend(ShylockAioArangoDBBackend):
         else:
             self._coll = await self._db.create_collection(self._collection_name)
 
-        await self._coll.add_persistent_index(fields=["name"], unique=True)
-        await self._coll.add_ttl_index(fields=["expiresAt"], expiry_time=0)
+        await self._coll.add_index(fields=["name"], type="persistent")
+        await self._coll.add_index(fields=["expiresAt"], type="ttl", options={"expireAfter": 0})
 
