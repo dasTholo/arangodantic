@@ -20,18 +20,11 @@ annotated-types==0.7.0
     # via pydantic
 attrs==25.3.0
     # via aiohttp
-certifi==2025.7.9
-    # via requests
-charset-normalizer==3.4.2
-    # via requests
 frozenlist==1.7.0
     # via aiohttp
     # via aiosignal
 idna==3.10
-    # via requests
     # via yarl
-importlib-metadata==8.7.0
-    # via python-arango
 inflection==0.5.1
     # via arangodantic
 iniconfig==2.1.0
@@ -44,7 +37,6 @@ orjson==3.10.18
     # via arangodantic
 packaging==25.0
     # via pytest
-    # via python-arango
     # via python-arango-async
 pluggy==1.6.0
     # via pytest
@@ -58,23 +50,14 @@ pydantic-core==2.33.2
 pygments==2.19.2
     # via pytest
 pyjwt==2.10.1
-    # via python-arango
     # via python-arango-async
 pytest==8.4.1
     # via pytest-asyncio
 pytest-asyncio==1.0.0
-python-arango==8.2.1
 python-arango-async==0.0.5
     # via arangodantic
 python-decouple==3.8
-    # via arangodantic
-requests==2.32.4
-    # via python-arango
-    # via requests-toolbelt
-requests-toolbelt==1.0.0
-    # via python-arango
 setuptools==80.9.0
-    # via python-arango
     # via python-arango-async
 shylock==1.2.1
     # via arangodantic
@@ -85,10 +68,5 @@ typing-extensions==4.14.1
     # via typing-inspection
 typing-inspection==0.4.1
     # via pydantic
-urllib3==2.5.0
-    # via python-arango
-    # via requests
 yarl==1.20.1
     # via aiohttp
-zipp==3.23.0
-    # via importlib-metadata

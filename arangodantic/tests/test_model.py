@@ -3,8 +3,8 @@ from typing import List
 from uuid import uuid4
 
 import pytest
-from arango import DocumentUpdateError
-from asyncer import asyncify
+from arangoasync import DocumentUpdateError
+
 
 from arangodantic import (
     ASCENDING,

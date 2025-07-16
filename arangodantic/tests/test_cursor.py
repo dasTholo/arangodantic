@@ -2,12 +2,14 @@ import pytest
 
 from arangodantic.tests.conftest import Identity
 
+@pytest.mark.asyncio
+async def test_db_name(identity_alice):
+    assert identity_alice.get_db().name == "Alice"
+
 
 @pytest.mark.asyncio
 async def test_to_list(identity_collection, identity_alice, identity_bob):
     identities = await (await Identity.find()).to_list()
-    print(type(identities))
-    print(identities)
     assert len(identities) == 2
     assert any(i.name == "Alice" for i in identities)
     assert any(i.name == "Bob" for i in identities)

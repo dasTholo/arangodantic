@@ -494,7 +494,6 @@ class Model(BaseModel, ABC):
                 raise MultipleModelsFoundError(
                     f"Multiple '{cls.__name__}' matched given filters"
                 )
-            print(f"results {results}")
             return results[0]
         except IndexError:
             raise ModelNotFoundError(f"No '{cls.__name__}' matched given filters")
@@ -542,7 +541,7 @@ class Model(BaseModel, ABC):
         return await ArangodanticCursor(cls, cursor).to_list()
 
     @classmethod
-    async def get_keys(cls) -> list[ArangodanticCursor]:
+    async def get_keys(cls) -> list[str]:
         """
         Return all document keys in the collection.
 
@@ -553,12 +552,10 @@ class Model(BaseModel, ABC):
         """
         query = "FOR doc IN @@collection RETURN doc._key"
         cursor = await cls.execute_aql_query(query, {})
-        print(f"key {await cursor.to_list()}")
-        keys = await cursor.to_list()
-        return keys
+        return await cursor.to_list()
 
     @classmethod
-    async def ids(cls) -> list[ArangodanticCursor]:
+    async def ids(cls) -> list[str]:
         """
         Return all document ids in the collection.
 
@@ -578,11 +575,6 @@ class Model(BaseModel, ABC):
     @classmethod
     @lru_cache()
     def get_collection_name(cls) -> str:
-
-        # config_class = getattr(cls, "ArangodanticConfig", ArangodanticCollectionConfig)
-        # cls_config = config_class()
-
-
         cls_config: ArangodanticCollectionConfig = getattr(
             cls, "ArangodanticConfig", ArangodanticCollectionConfig()
         )

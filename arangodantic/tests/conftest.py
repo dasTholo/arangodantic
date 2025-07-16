@@ -3,17 +3,14 @@ import string
 from decouple import config
 from typing import Optional
 from uuid import uuid4
-from decouple import config
 import pydantic
 import pytest
 from arangoasync import ArangoClient
 from arangoasync.auth import Auth
 
 from shylock import AsyncLock as Lock
-from shylock import configure as configure_shylock
 
 from arangodantic import DocumentModel, EdgeDefinition, EdgeModel, GraphModel, configure
-from arangodantic.backends import ShylockAsyncerArangoDBBackend
 
 HOSTS = config("HOSTS")
 USERNAME = "root"
@@ -37,24 +34,29 @@ def prefix() -> str:
 
 @pytest.fixture
 async def client():
+    """Provides an ArangoClient instance and ensures it's closed after the test."""
     arango_client = ArangoClient(hosts=HOSTS)
     try:
         yield arango_client
     finally:
         await arango_client.close()
 
+
 @pytest.fixture
-async def configure_db(client, prefix):
+async def db(client, prefix):
+    """
+    Uses the client to set up the database and configure the library.
+    """
     auth = Auth(username=USERNAME, password=PASSWORD)
-    sys_db = await client.db("_system", auth=auth)
-    if not await sys_db.has_database(DATABASE):
-        await sys_db.create_database(DATABASE)
-
-    test_db = await client.db(DATABASE, auth=auth)
-
-
-    configure(test_db, prefix=f"{prefix}-", key_gen=uuid4, lock=Lock)
-    yield test_db
+    try:
+        sys_db = await client.db("_system", auth=auth)
+        if not await sys_db.has_database(DATABASE):
+            await sys_db.create_database(DATABASE)
+        test_db = await client.db(DATABASE, auth=auth)
+        configure(test_db, prefix=f"{prefix}-", key_gen=uuid4, lock=Lock)
+        yield test_db
+    finally:
+        await client.close()
 
 
 class Identity(DocumentModel):
@@ -133,7 +135,7 @@ class SecondaryRelationGraph(GraphModel):
 
 
 @pytest.fixture
-async def identity_collection(configure_db):
+async def identity_collection(db):
     await Identity.ensure_collection()
     yield
     await Identity.delete_collection()
@@ -154,28 +156,28 @@ async def identity_bob(identity_collection):
 
 
 @pytest.fixture
-async def extended_identity_collection(configure_db):
+async def extended_identity_collection(db):
     await ExtendedIdentity.ensure_collection()
     yield
     await ExtendedIdentity.delete_collection()
 
 
 @pytest.fixture
-async def link_collection(configure_db):
+async def link_collection(db):
     await Link.ensure_collection()
     yield
     await Link.delete_collection()
 
 
 @pytest.fixture
-async def relation_graph(configure_db):
+async def relation_graph(db):
     await RelationGraph.ensure_graph()
     yield
     await RelationGraph.delete_graph(ignore_missing=True, drop_collections=True)
 
 
 @pytest.fixture
-async def secondary_relation_graph(configure_db):
+async def secondary_relation_graph(db):
     await SecondaryRelationGraph.ensure_graph()
     yield
     await SecondaryRelationGraph.delete_graph(

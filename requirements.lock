@@ -46,8 +46,6 @@ pyjwt==2.10.1
     # via python-arango-async
 python-arango-async==0.0.5
     # via arangodantic
-python-decouple==3.8
-    # via arangodantic
 setuptools==80.9.0
     # via python-arango-async
 shylock==1.2.1
