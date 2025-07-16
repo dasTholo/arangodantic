@@ -1,6 +1,6 @@
 [project]
 name = "arangodantic"
-version = "0.5.0"
+version = "0.5.1"
 description = "Database models for ArangoDB using Pydantic V2 base models."
 authors = [
     { name = "Digital Living International Ltd" },
