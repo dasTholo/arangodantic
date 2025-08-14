@@ -570,7 +570,9 @@ class Model(BaseModel, ABC):
 
     @classmethod
     def get_db(cls) -> StandardDatabase:
-        return CONF.db
+        cls_config = getattr(cls, "ArangodanticConfig", None)
+        db = getattr(cls_config, "database_name", None) if cls_config else None
+        return db or CONF.db
 
     @classmethod
     @lru_cache()

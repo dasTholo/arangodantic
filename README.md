@@ -40,14 +40,15 @@ docker run --rm -p 8529:8529 -e ARANGO_ROOT_PASSWORD="" arangodb/arangodb:3.7.2.
 import asyncio
 from uuid import uuid4
 
-from aioarangodb import ArangoClient
+from arangoasync import ArangoClient
 from pydantic import BaseModel
 from shylock import AsyncLock as Lock
 from shylock import ShylockAioArangoDBBackend
 from shylock import configure as configure_shylock
 
 from arangodantic import ASCENDING, DocumentModel, EdgeModel, configure
-
+from arangoasync.auth import Auth
+from decouple import config
 
 # Define models
 class Owner(BaseModel):
@@ -59,7 +60,12 @@ class Owner(BaseModel):
 
 class Company(DocumentModel):
     """Dummy company Arangodantic model."""
-
+    class ArangodanticConfig:
+        collection_name: str = "companies"
+        # this will create a collection named "groups" at the database "groups_database"
+        # if you want to use a different database, you can set the database_name attribute
+        # to the name of the database you want to use.
+        database_name: str = "groups_database"
     company_id: str
     owner: Owner
 
@@ -89,7 +95,21 @@ async def main():
     db = await client.db(database, username=username, password=password)
     configure_shylock(await ShylockAioArangoDBBackend.create(db, f"{prefix}shylock"))
     configure(db, prefix=prefix, key_gen=uuid4, lock=Lock)
-
+    for model in [Company, Link]:
+        # Set the database name in the model's config class
+        # This is needed to ensure that the model uses the correct database
+        # when saving and loading documents.
+        config_cls = getattr(model, "ArangodanticConfig", None)
+        db_name_str = getattr(config_cls, "database_name", None)
+        if db_name_str is not None:
+            db_obj = await client.db(
+                db_name_str,
+                auth=Auth(
+                    username=config("ARANGODB_USER"),
+                    password=config("ARANGODB_PASS"),
+                ),
+            )
+            setattr(config_cls, "database_name", db_obj)
     # Create collections if they don't yet exist
     # Only for demo, you likely want to create the collections in advance.
     await Company.ensure_collection()

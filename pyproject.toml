@@ -8,7 +8,7 @@ authors = [
 ]
 dependencies = [
     "pydantic>=2.11.7",
-    "orjson>=3.10.18",
+    "orjson>=3.11.2",
     "shylock>=1.2.1",
     "inflection>=0.5.1",
     "python-arango-async>=0.0.5",

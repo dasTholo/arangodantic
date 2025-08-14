@@ -12,7 +12,7 @@
 -e file:.
 aiohappyeyeballs==2.6.1
     # via aiohttp
-aiohttp==3.12.14
+aiohttp==3.12.15
     # via python-arango-async
 aiosignal==1.4.0
     # via aiohttp
@@ -27,11 +27,11 @@ idna==3.10
     # via yarl
 inflection==0.5.1
     # via arangodantic
-multidict==6.6.3
+multidict==6.6.4
     # via aiohttp
     # via python-arango-async
     # via yarl
-orjson==3.10.18
+orjson==3.11.2
     # via arangodantic
 packaging==25.0
     # via python-arango-async
