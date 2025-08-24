@@ -12,6 +12,7 @@ from arangoasync import (
     DocumentInsertError,
     DocumentReplaceError,
 )
+from arangoasync.typings import CollectionType
 from arangoasync.collection import StandardCollection
 from arangoasync.database import StandardDatabase
 from arangoasync.errno import DATA_SOURCE_NOT_FOUND, DOCUMENT_NOT_FOUND
@@ -690,7 +691,12 @@ class EdgeModel(Model, ABC):
         """
         Ensure the Edge-collection exists and create it if needed.
         """
-        return await super(EdgeModel, cls).ensure_collection(key_options=KeyOptions(allow_user_keys=False), *args, **kwargs
+        return await super(EdgeModel, cls).ensure_collection(
+            key_options=KeyOptions(
+                allow_user_keys=False
+            ),
+            col_type=CollectionType.EDGE, 
+            *args, **kwargs
         )
 
 
